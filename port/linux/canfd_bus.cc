@@ -14,8 +14,8 @@ int SocketCANBus::Init() {
   return socket_fd_;
 }
 
-void SocketCANBus::SetReceiverId(uint32_t *id) {
-  for (int i = 0; i < kMAX_MOTOR_NUM; ++i) {
+void SocketCANBus::SetReceiverId(uint32_t *id, uint8_t len) {
+  for (int i = 0; i < len; ++i) {
     fb_frames_[i].master_id = id[i];
   }
   // 将接收 ID 注册为内核 CAN 过滤器，socket 只接收这些 ID 的帧

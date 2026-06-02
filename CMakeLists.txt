@@ -25,6 +25,8 @@ target_sources(${CMAKE_TARGET_NAME} PRIVATE
 option(DMDRIVER_BUILD_WITH_EXAMPLE "Build dm_driver examples" ON)
 
 if (DMDRIVER_BUILD_WITH_EXAMPLE)
-    add_executable(demo example/main.cc)
-    target_link_libraries(demo PRIVATE ${CMAKE_TARGET_NAME})
+    add_executable(socketcan_demo example/socketcan_demo.cc)
+    target_link_libraries(socketcan_demo PRIVATE ${CMAKE_TARGET_NAME})
+    add_executable(motor_demo example/motor_demo.cc)
+    target_link_libraries(motor_demo PRIVATE ${CMAKE_TARGET_NAME})
 endif()

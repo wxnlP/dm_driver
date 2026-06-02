@@ -32,7 +32,7 @@ int SocketCAN_Connect(const char* can_port, bool fd_mode)
 
   // 知道can接口
   struct ifreq ifr;
-  strcpy(ifr.ifr_name, can_port);
+  strncpy(ifr.ifr_name, can_port, IFNAMSIZ - 1);
   if (ioctl(sock_fd, SIOCGIFINDEX, &ifr) == -1) {
     close(sock_fd);
     return -1;
