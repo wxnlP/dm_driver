@@ -22,5 +22,9 @@ target_sources(${CMAKE_TARGET_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/port/linux/canfd_bus.cc
 )
 
-add_executable(demo example/main.cc)
-target_link_libraries(demo PRIVATE ${CMAKE_TARGET_NAME})
+option(DMDRIVER_BUILD_WITH_EXAMPLE "Build dm_driver examples" ON)
+
+if (DMDRIVER_BUILD_WITH_EXAMPLE)
+    add_executable(demo example/main.cc)
+    target_link_libraries(demo PRIVATE ${CMAKE_TARGET_NAME})
+endif()
