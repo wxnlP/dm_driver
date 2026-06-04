@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.24)
 project(dm_driver LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 17)
