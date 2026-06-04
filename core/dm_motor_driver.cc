@@ -187,7 +187,7 @@ int DmMotorDriver::GetLatestState(MotorState& state) {
   state.state = data[0] >> 4;
   int posInt = (data[1] << 8) | data[2];
   int velInt = (data[3] << 4) | (data[4] >> 4);
-  int torqueInt = data[5];
+  int torqueInt = ((data[4] & 0x0F) << 8) | data[5];
   state.pos = UintToFloat(posInt, P_MAX, -P_MAX, 16);
   state.vel = UintToFloat(velInt, V_MAX, -V_MAX, 12);
   state.torque = UintToFloat(torqueInt, T_MAX, -T_MAX, 12);
