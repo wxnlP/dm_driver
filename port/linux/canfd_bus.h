@@ -2,11 +2,14 @@
 
 #include "canfd_bus_base.h"
 #include <string>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 #ifndef MAX_MOTOR_NUM
-constexpr int kMAX_MOTOR_NUM = 7;
+static constexpr int kMAX_MOTOR_NUM = 7;
 #else
-constexpr int kMAX_MOTOR_NUM = MAX_MOTOR_NUM;
+static constexpr int kMAX_MOTOR_NUM = MAX_MOTOR_NUM;
 #endif
 
 class SocketCANBus : public CanFdBusBase {
@@ -14,6 +17,7 @@ public:
   struct FBFrame {
     uint32_t master_id{};
     uint8_t data[8]{};
+    bool valid{false};
   };
 
   SocketCANBus(const std::string &interface_name, bool fd_mode = false);
@@ -27,6 +31,8 @@ public:
 
 private:
   FBFrame fb_frames_[kMAX_MOTOR_NUM]{};
+  std::mutex fb_frames_mutex_;
+  std::jthread sample_thread_;
   std::string can_interface_;
   int socket_fd_;
   bool fd_mode_;

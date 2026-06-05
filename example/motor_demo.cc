@@ -6,7 +6,7 @@
 
 int main()
 {
-    SocketCANBus socketcan0("can0", true);
+    SocketCANBus socketcan0("vcan0", true);
     DmMotorDriver dm4310(socketcan0, 0x01);
     std::cout << "SocketCAN Init" << std::endl;
     int sock_fd = socketcan0.Init();
@@ -18,13 +18,6 @@ int main()
     // std::cout << "ret: " << ret << std::endl;
     std::cout << "Motor Enable" << std::endl;
     dm4310.Enable(true);
-
-    std::jthread sample_thread([&socketcan0] () {
-        while (true) {
-            socketcan0.Sample();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    });
 
     std::jthread receive_thread([&dm4310] () {
         DmMotorDriver::MotorState state{};

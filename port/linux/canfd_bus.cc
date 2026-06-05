@@ -2,6 +2,7 @@
 #include "socket_can.h"
 #include <cstring>
 
+
 SocketCANBus::SocketCANBus(const std::string &interface_name, bool fd_mode)
     : can_interface_(interface_name), fd_mode_(fd_mode) {}
 
@@ -11,10 +12,19 @@ SocketCANBus::~SocketCANBus() {
 
 int SocketCANBus::Init() {
   socket_fd_ = SocketCAN_Connect(can_interface_.c_str(), fd_mode_);
+  if (socket_fd_ < 0) {
+    return -1;
+  }
+  sample_thread_ = std::jthread([this]() {
+    while (true) {
+      Sample();
+    }
+  });
   return socket_fd_;
 }
 
 void SocketCANBus::SetReceiverId(uint32_t *id, uint8_t len) {
+  std::lock_guard<std::mutex> lock(fb_frames_mutex_);
   for (int i = 0; i < len; ++i) {
     fb_frames_[i].master_id = id[i];
   }
@@ -39,9 +49,11 @@ void SocketCANBus::Sample() {
     bytes = SocketCAN_Receive(socket_fd_, &id, &dlc, data);
   }
   if (bytes > 0) {
+    std::lock_guard<std::mutex> lock(fb_frames_mutex_);
     for (int i = 0; i < kMAX_MOTOR_NUM; ++i) {
       if (fb_frames_[i].master_id == id) {
         memcpy(fb_frames_[i].data, data, dlc);
+        fb_frames_[i].valid = true;
         break;
       }
     }
@@ -57,8 +69,9 @@ int SocketCANBus::Send(uint32_t id, const uint8_t *data, uint8_t len) {
 }
 
 int SocketCANBus::Receive(uint32_t id, uint8_t *data) {
+  std::lock_guard<std::mutex> lock(fb_frames_mutex_);
   for (int i = 0; i < kMAX_MOTOR_NUM; ++i) {
-    if (fb_frames_[i].master_id == id + 0x10) {
+    if (fb_frames_[i].master_id == id + 0x10 && fb_frames_[i].valid) {
       memcpy(data, fb_frames_[i].data, 8);
       return 0;
     }
