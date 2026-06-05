@@ -5,14 +5,6 @@
 
 using MotorType = float;
 
-constexpr MotorType P_MAX{12.5};
-constexpr MotorType V_MAX{30.0};
-constexpr MotorType T_MAX{10.0};
-constexpr MotorType KP_MAX{500.0};
-constexpr MotorType KP_MIN{0.0};
-constexpr MotorType KD_MAX{5.0};
-constexpr MotorType KD_MIN{0.0};
-
 class DmMotorDriver {
 public:
   enum class CtrlMode {
@@ -22,37 +14,45 @@ public:
   };
 
   struct MotorState {
-    uint32_t id;      // motor id
-    int state;        // motor state
-    MotorType pos;    // real position
-    MotorType vel;    // real velocity
-    MotorType torque; // real torque
+    uint32_t id{};      // motor id
+    int state{};        // motor state
+    MotorType pos{};    // real position
+    MotorType vel{};    // real velocity
+    MotorType torque{}; // real torque
   };
 
   struct CtrlCmd {
-    CtrlCmd() = default;
-    CtrlCmd(MotorType _pos, MotorType _vel, MotorType _torque,
-            MotorType _stiffness, MotorType _damping)
-        : pos(_pos), vel(_vel), torque(_torque), stiffness(_stiffness), damping(_damping) {}
-
-    MotorType pos; // 位置 rad
-    MotorType vel; // 速度 rad/s
-    MotorType torque;    // 力矩 N.M
-    MotorType stiffness; // 刚度 N/r
-    MotorType damping;   // 阻尼 N*s/r
+    MotorType pos{};       // 位置 rad
+    MotorType vel{};       // 速度 rad/s
+    MotorType torque{};    // 力矩 N.M
+    MotorType stiffness{}; // 刚度 N/r
+    MotorType damping{};   // 阻尼 N*s/r
   };
 
-  DmMotorDriver(CanFdBusBase &_canfd_bus, uint8_t _motor_id)
-      : canfd_bus_(_canfd_bus), motor_id_(_motor_id) {}
+  struct MotorParamsRange {
+    MotorType pos_max{12.5};
+    MotorType vel_max{30.0};
+    MotorType torque_max{10.0};
+    MotorType stiffness_min{0.0};
+    MotorType stiffness_max{500.0};
+    MotorType damping_min{0.0};
+    MotorType damping_max{5.0};
+  };
+
+  enum class MotorModel {
+    DM4310 = 1,
+    DM4340P = 2,
+  };
+
   DmMotorDriver(CanFdBusBase &_canfd_bus, uint8_t _motor_id,
-                MotorType _angle_min_limit, MotorType _angle_max_limit)
-      : canfd_bus_(_canfd_bus), motor_id_(_motor_id),
-        angle_min_limit_(_angle_min_limit), angle_max_limit_(_angle_max_limit) {
-    SetAngleLimits(_angle_min_limit, _angle_max_limit);
-  }
+                MotorModel model = MotorModel::DM4310);
+  DmMotorDriver(CanFdBusBase &_canfd_bus, uint8_t _motor_id,
+                MotorType _angle_min_limit, MotorType _angle_max_limit,
+                MotorModel model = MotorModel::DM4310);
   virtual ~DmMotorDriver() = default;
 
   int Enable(bool enable);
+  void SetParamsRange(const MotorParamsRange &range);
   int SetCtrlMode(CtrlMode mode, bool save);
   int SetZeroPos();
   int SetMotorID(uint32_t id, bool save);
@@ -63,6 +63,7 @@ public:
   void SetAngleLimits(MotorType min_limit, MotorType max_limit);
 
 private:
+  void SetupMotorParams(MotorModel model);
   int MITCtrl(MotorType vel, MotorType pos, MotorType torque,
               MotorType stiffness, MotorType damping);
   int PosCtrl(MotorType pos, MotorType vel);
@@ -77,4 +78,5 @@ private:
   CtrlMode current_mode_{CtrlMode::MIT};
   MotorType angle_min_limit_{-3.1415};
   MotorType angle_max_limit_{3.1415};
+  MotorParamsRange params_range_{};
 };

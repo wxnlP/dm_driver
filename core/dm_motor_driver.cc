@@ -18,6 +18,47 @@ inline float UintToFloat(int oInt, float fMax, float fMin, uint8_t bits) {
          offset;
 }
 
+DmMotorDriver::DmMotorDriver(CanFdBusBase &_canfd_bus, uint8_t _motor_id,
+                             MotorModel model)
+    : canfd_bus_(_canfd_bus), motor_id_(_motor_id) {
+  SetupMotorParams(model);
+}
+
+DmMotorDriver::DmMotorDriver(CanFdBusBase &_canfd_bus, uint8_t _motor_id,
+                             MotorType _angle_min_limit,
+                             MotorType _angle_max_limit,
+                             MotorModel model)
+    : canfd_bus_(_canfd_bus), motor_id_(_motor_id),
+      angle_min_limit_(_angle_min_limit), angle_max_limit_(_angle_max_limit) {
+  SetAngleLimits(_angle_min_limit, _angle_max_limit);
+  SetupMotorParams(model);
+}
+
+void DmMotorDriver::SetupMotorParams(MotorModel model) {
+  switch (model) {
+  case MotorModel::DM4310:
+    params_range_.pos_max = 12.5;
+    params_range_.vel_max = 30.0;
+    params_range_.torque_max = 10.0;
+    params_range_.stiffness_min = 0.0;
+    params_range_.stiffness_max = 500.0;
+    params_range_.damping_min = 0.0;
+    params_range_.damping_max = 5.0;
+    break;
+  case MotorModel::DM4340P:
+    params_range_.pos_max = 12.5;
+    params_range_.vel_max = 30.0;
+    params_range_.torque_max = 15.0;
+    params_range_.stiffness_min = 0.0;
+    params_range_.stiffness_max = 500.0;
+    params_range_.damping_min = 0.0;
+    params_range_.damping_max = 5.0;
+    break;
+  default:
+    break;
+  }
+}
+
 /**
  * @brief 读寄存器
  *
@@ -43,7 +84,7 @@ int DmMotorDriver::ReadRegister(uint8_t reg) {
  * @param data 写入的数据
  * @return 成功返回0，否则返回1
  */
-int DmMotorDriver::WriteRegister(uint8_t reg, const uint8_t* data) {
+int DmMotorDriver::WriteRegister(uint8_t reg, const uint8_t *data) {
   uint8_t frame[8];
 
   frame[0] = motor_id_;
@@ -110,16 +151,20 @@ int DmMotorDriver::SetZeroPos() {
   return canfd_bus_.Send(id, data, 8);
 }
 
-int DmMotorDriver::MITCtrl(MotorType vel, MotorType pos,
-                           MotorType torque, MotorType stiffness,
-                           MotorType damping) {
+int DmMotorDriver::MITCtrl(MotorType vel, MotorType pos, MotorType torque,
+                           MotorType stiffness, MotorType damping) {
   uint8_t data[8];
   uint16_t id = motor_id_;
-  int posInt = FloatToUint(pos, P_MAX, -P_MAX, 16);
-  int velInt = FloatToUint(vel, V_MAX, -V_MAX, 12);
-  int torInt = FloatToUint(torque, T_MAX, -T_MAX, 12);
-  int kpInt = FloatToUint(stiffness, KP_MAX, KP_MIN, 12);
-  int kdInt = FloatToUint(damping, KD_MAX, KD_MIN, 12);
+  int posInt =
+      FloatToUint(pos, params_range_.pos_max, -params_range_.pos_max, 16);
+  int velInt =
+      FloatToUint(vel, params_range_.vel_max, -params_range_.vel_max, 12);
+  int torInt = FloatToUint(torque, params_range_.torque_max,
+                           -params_range_.torque_max, 12);
+  int kpInt = FloatToUint(stiffness, params_range_.stiffness_max,
+                          params_range_.stiffness_min, 12);
+  int kdInt = FloatToUint(damping, params_range_.damping_max,
+                          params_range_.damping_min, 12);
 
   data[0] = posInt >> 8;
   data[1] = posInt;
@@ -176,7 +221,7 @@ int DmMotorDriver::ClearError(CtrlMode mode) {
   return canfd_bus_.Send(id, data, 8);
 }
 
-int DmMotorDriver::GetLatestState(MotorState& state) {
+int DmMotorDriver::GetLatestState(MotorState &state) {
   uint8_t data[8];
 
   if (canfd_bus_.Receive(motor_id_, data) == -1) {
@@ -188,9 +233,12 @@ int DmMotorDriver::GetLatestState(MotorState& state) {
   int posInt = (data[1] << 8) | data[2];
   int velInt = (data[3] << 4) | (data[4] >> 4);
   int torqueInt = ((data[4] & 0x0F) << 8) | data[5];
-  state.pos = UintToFloat(posInt, P_MAX, -P_MAX, 16);
-  state.vel = UintToFloat(velInt, V_MAX, -V_MAX, 12);
-  state.torque = UintToFloat(torqueInt, T_MAX, -T_MAX, 12);
+  state.pos =
+      UintToFloat(posInt, params_range_.pos_max, -params_range_.pos_max, 16);
+  state.vel =
+      UintToFloat(velInt, params_range_.vel_max, -params_range_.vel_max, 12);
+  state.torque = UintToFloat(torqueInt, params_range_.torque_max,
+                             -params_range_.torque_max, 12);
   return 0;
 }
 
@@ -203,7 +251,7 @@ int DmMotorDriver::RequestState() {
   return canfd_bus_.Send(0x7FF, data, 4);
 }
 
-int DmMotorDriver::MoveCtrl(const CtrlCmd& cmd) {
+int DmMotorDriver::MoveCtrl(const CtrlCmd &cmd) {
   CtrlCmd limited_cmd = cmd;
   if (limited_cmd.pos > angle_max_limit_) {
     limited_cmd.pos = angle_max_limit_;
@@ -212,18 +260,22 @@ int DmMotorDriver::MoveCtrl(const CtrlCmd& cmd) {
     limited_cmd.pos = angle_min_limit_;
   }
   switch (current_mode_) {
-    case CtrlMode::MIT:
-      return MITCtrl(cmd.vel, cmd.pos, cmd.torque, cmd.stiffness, cmd.damping);
-    case CtrlMode::POS:
-      return PosCtrl(cmd.pos, cmd.vel);
-    case CtrlMode::VEL:
-      return VelCtrl(cmd.vel);
-    default:
-      return -1;
+  case CtrlMode::MIT:
+    return MITCtrl(cmd.vel, cmd.pos, cmd.torque, cmd.stiffness, cmd.damping);
+  case CtrlMode::POS:
+    return PosCtrl(cmd.pos, cmd.vel);
+  case CtrlMode::VEL:
+    return VelCtrl(cmd.vel);
+  default:
+    return -1;
   }
 }
 
 void DmMotorDriver::SetAngleLimits(MotorType min_limit, MotorType max_limit) {
   angle_min_limit_ = min_limit;
   angle_max_limit_ = max_limit;
+}
+
+void DmMotorDriver::SetParamsRange(const MotorParamsRange &range) {
+  params_range_ = range;
 }
