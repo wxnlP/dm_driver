@@ -15,8 +15,8 @@ int SocketCANBus::Init() {
   if (socket_fd_ < 0) {
     return -1;
   }
-  sample_thread_ = std::jthread([this]() {
-    while (true) {
+  sample_thread_ = std::jthread([this](std::stop_token st) {
+    while (!st.stop_requested()) {
       Sample();
     }
   });
