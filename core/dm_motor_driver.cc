@@ -47,8 +47,8 @@ void DmMotorDriver::SetupMotorParams(MotorModel model) {
     break;
   case MotorModel::DM4340P:
     params_range_.pos_max = 12.5;
-    params_range_.vel_max = 30.0;
-    params_range_.torque_max = 15.0;
+    params_range_.vel_max = 10.0;
+    params_range_.torque_max = 28.0;
     params_range_.stiffness_min = 0.0;
     params_range_.stiffness_max = 500.0;
     params_range_.damping_min = 0.0;
