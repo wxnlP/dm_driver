@@ -151,7 +151,7 @@ int DmMotorDriver::SetZeroPos() {
   return canfd_bus_.Send(id, data, 8);
 }
 
-int DmMotorDriver::MITCtrl(MotorType vel, MotorType pos, MotorType torque,
+int DmMotorDriver::MITCtrl(MotorType pos, MotorType vel, MotorType torque,
                            MotorType stiffness, MotorType damping) {
   uint8_t data[8];
   uint16_t id = motor_id_;
@@ -261,11 +261,11 @@ int DmMotorDriver::MoveCtrl(const CtrlCmd &cmd) {
   }
   switch (current_mode_) {
   case CtrlMode::MIT:
-    return MITCtrl(cmd.vel, cmd.pos, cmd.torque, cmd.stiffness, cmd.damping);
+    return MITCtrl(limited_cmd.pos, limited_cmd.vel, limited_cmd.torque, limited_cmd.stiffness, limited_cmd.damping);
   case CtrlMode::POS:
-    return PosCtrl(cmd.pos, cmd.vel);
+    return PosCtrl(limited_cmd.pos, limited_cmd.vel);
   case CtrlMode::VEL:
-    return VelCtrl(cmd.vel);
+    return VelCtrl(limited_cmd.vel);
   default:
     return -1;
   }

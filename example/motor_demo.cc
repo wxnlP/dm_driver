@@ -32,7 +32,7 @@ int main()
         }
     });
 
-    DmMotorDriver::CtrlCmd cmd{0.0, 2.0, 0, 0.0, 0.5};
+    DmMotorDriver::CtrlCmd cmd{2.0, 0.0, 0, 0.0, 0.5};
     std::cout << "MIT velocity control" << std::endl;
     dm4310.MoveCtrl(cmd);
     std::this_thread::sleep_for(std::chrono::seconds(5));

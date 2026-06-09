@@ -64,7 +64,7 @@ public:
 
 private:
   void SetupMotorParams(MotorModel model);
-  int MITCtrl(MotorType vel, MotorType pos, MotorType torque,
+  int MITCtrl(MotorType pos, MotorType vel, MotorType torque,
               MotorType stiffness, MotorType damping);
   int PosCtrl(MotorType pos, MotorType vel);
   int VelCtrl(MotorType vel);
