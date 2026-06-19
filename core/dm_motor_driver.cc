@@ -196,13 +196,16 @@ int DmMotorDriver::SetCtrlMode(CtrlMode mode, bool save) {
   uint8_t data[4]{};
   data[0] = static_cast<uint8_t>(mode);
   // write
-  if (WriteRegister(0x0A, data)) {
+  if (WriteRegister(0x0A, data) == -1) {
     return -1;
   }
   // save to register
   if (save) {
-    return SaveRegister(0x0A);
+    if (SaveRegister(0x0A) == -1) {
+      return -1;
+    }
   }
+  current_mode_ = mode;
   return 0;
 }
 
